@@ -131,14 +131,8 @@ sudo -u postgres psql -d $DB_NAME -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN S
 
 print_success "PostgreSQL configuré !"
 
-# Étape 5 : Copier le script tracker
-print_info "Étape 5/7 : Installation du script tracker..."
-sudo mkdir -p $INSTALL_DIR
-sudo chown $CURRENT_USER:$CURRENT_USER $INSTALL_DIR
-cp "$(pwd)/fgms_tracker.py" $INSTALL_DIR/fgms_tracker.py
-print_success "Script tracker installé dans $INSTALL_DIR !"
 
-# Étape 6 : Pare-feu
+# Étape 5: Pare-feu
 print_info "Étape 6/7 : Configuration du pare-feu..."
 if command -v ufw &> /dev/null; then
     sudo ufw status | grep -q "$FGMS_PORT/udp" || sudo ufw allow $FGMS_PORT/udp
@@ -151,7 +145,7 @@ else
     print_warning "ufw non disponible, pare-feu ignoré."
 fi
 
-# Étape 7 : Services systemd
+# Étape 6 : Services systemd
 print_info "Étape 7/7 : Création des services systemd..."
 if command -v systemctl &> /dev/null; then
     sudo tee /etc/systemd/system/fgms.service > /dev/null << EOF
