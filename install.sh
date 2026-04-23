@@ -135,8 +135,7 @@ print_success "PostgreSQL configuré !"
 print_info "Étape 5/7 : Installation du script tracker..."
 sudo mkdir -p $INSTALL_DIR
 sudo chown $CURRENT_USER:$CURRENT_USER $INSTALL_DIR
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cp $SCRIPT_DIR/fgms_tracker.py $INSTALL_DIR/fgms_tracker.py
+cp "$(pwd)/fgms_tracker.py" $INSTALL_DIR/fgms_tracker.py
 print_success "Script tracker installé dans $INSTALL_DIR !"
 
 # Étape 6 : Pare-feu
