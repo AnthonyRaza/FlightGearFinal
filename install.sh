@@ -16,7 +16,10 @@ print_warning() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 print_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # Config
-INSTALL_DIR="/opt/flightgear"
+DB_NAME="flightgear"
+DB_USER="fguser"
+DB_PASS="fgpassword123"
+INSTALL_DIR="/root/flightgear"
 CURRENT_USER=$(whoami)
 FGMS_PORT=5000
 FGMS_TELNET_PORT=5001
@@ -34,17 +37,6 @@ echo "  6. Créer les services systemd"
 echo ""
 read -p "Continuer ? (o/n) : " CONFIRM
 [[ "$CONFIRM" != "o" ]] && exit 0
-
-# Config base de données
-echo ""
-print_info "Configuration de la base de données :"
-read -p "Nom de la base [flightgear] : " DB_NAME
-DB_NAME=${DB_NAME:-flightgear}
-read -p "Nom d'utilisateur [fguser] : " DB_USER
-DB_USER=${DB_USER:-fguser}
-read -s -p "Mot de passe [fgpassword123] : " DB_PASS
-echo ""
-DB_PASS=${DB_PASS:-fgpassword123}
 
 # Étape 1 : Mise à jour
 print_info "Étape 1/6 : Mise à jour du système..."
@@ -135,18 +127,6 @@ sudo -u postgres psql -d $DB_NAME -c "CREATE TABLE IF NOT EXISTS aircraft_positi
 sudo -u postgres psql -d $DB_NAME -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $DB_USER;"
 sudo -u postgres psql -d $DB_NAME -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $DB_USER;"
 
-# Créer le fichier .env
-print_info "Création du fichier .env..."
-sudo mkdir -p $INSTALL_DIR
-sudo chown $CURRENT_USER:$CURRENT_USER $INSTALL_DIR
-cat > $INSTALL_DIR/.env << ENVEOF
-DB_NAME=$DB_NAME
-DB_USER=$DB_USER
-DB_PASS=$DB_PASS
-DB_HOST=localhost
-ENVEOF
-print_success "Fichier .env créé dans $INSTALL_DIR !"
-
 print_success "PostgreSQL configuré !"
 
 # Étape 5 : Pare-feu
@@ -189,7 +169,7 @@ After=network.target postgresql.service fgms.service
 [Service]
 Type=simple
 User=$CURRENT_USER
-EnvironmentFile=$INSTALL_DIR/.env
+EnvironmentFile=$INSTALL_DIR/config/.env
 ExecStart=/usr/bin/python3 $INSTALL_DIR/fgms_tracker.py
 Restart=always
 RestartSec=5
@@ -209,7 +189,13 @@ else
     print_warning "systemd non disponible (WSL2). Lance manuellement :"
 fi
 
+# Lancer la configuration de la base de données
 echo ""
+print_info "Configuration de la base de données..."
+bash "$(dirname "$0")/setup_env.sh"
+echo ""
+
+
 print_success "=== Installation terminée ! ==="
 echo ""
 print_info "Ports ouverts :"
@@ -222,8 +208,9 @@ echo ""
 echo "  # Terminal 1 - Lancer FGMS :"
 echo "  fgms -p $FGMS_PORT -a $FGMS_TELNET_PORT -d"
 echo ""
-echo "  # Terminal 2 - Lancer le tracker :"
-echo "  source $INSTALL_DIR/.env && python3 ~/FlightGearTest/fgms_tracker.py"
+echo "  # Terminal 2 - Configurer et lancer le tracker :"
+echo "  bash $INSTALL_DIR/setup_env.sh"
+echo "  source $INSTALL_DIR/config/.env && python3 $INSTALL_DIR/fgms_tracker.py"
 echo ""
 print_info "Connexion FlightGear :"
 echo "  Serveur : $(hostname -I | awk '{print $1}') port $FGMS_PORT"
