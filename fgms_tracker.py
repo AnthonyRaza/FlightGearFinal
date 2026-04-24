@@ -7,7 +7,6 @@ def get_positions():
     s = socket.socket()
     s.connect(('127.0.0.1', 5001))
     s.send(b'list\r\n')
-    time.sleep(0.2)
     data = s.recv(16384).decode()
     s.close()
     players = []
@@ -44,4 +43,3 @@ while True:
             conn.rollback()
         except:
             conn = psycopg2.connect(dbname="flightgear", user="fguser", password="fgpassword123", host="localhost")
-    time.sleep(2)
