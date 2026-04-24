@@ -138,7 +138,6 @@ if command -v ufw &> /dev/null; then
     sudo ufw status | grep -q "$FGMS_PORT/udp" || sudo ufw allow $FGMS_PORT/udp
     sudo ufw status | grep -q "$FGMS_TELNET_PORT/tcp" || sudo ufw allow $FGMS_TELNET_PORT/tcp
     sudo ufw status | grep -q "5432/tcp" || sudo ufw allow 5432/tcp
-    sudo ufw status | grep -q "22/tcp" || sudo ufw allow 22/tcp
     sudo ufw --force enable
     print_success "Pare-feu configuré !"
 else
