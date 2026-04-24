@@ -1,6 +1,5 @@
 #!/bin/bash
 # FlightGear Multiplayer Tracker - Installation Script
-# Installe FGMS, PostgreSQL et le tracker Python
 
 set -e
 
@@ -17,9 +16,6 @@ print_warning() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 print_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # Config
-DB_NAME="flightgear"
-DB_USER="fguser"
-DB_PASS="fgpassword123"
 INSTALL_DIR="/opt/flightgear"
 CURRENT_USER=$(whoami)
 FGMS_PORT=5000
@@ -33,26 +29,36 @@ echo "  1. Mettre à jour le système"
 echo "  2. Installer PostgreSQL et les dépendances"
 echo "  3. Compiler et installer FGMS"
 echo "  4. Configurer la base de données"
-echo "  5. Copier le script tracker Python"
-echo "  6. Configurer le pare-feu"
-echo "  7. Créer les services systemd"
+echo "  5. Configurer le pare-feu"
+echo "  6. Créer les services systemd"
 echo ""
 read -p "Continuer ? (o/n) : " CONFIRM
 [[ "$CONFIRM" != "o" ]] && exit 0
 
+# Config base de données
+echo ""
+print_info "Configuration de la base de données :"
+read -p "Nom de la base [flightgear] : " DB_NAME
+DB_NAME=${DB_NAME:-flightgear}
+read -p "Nom d'utilisateur [fguser] : " DB_USER
+DB_USER=${DB_USER:-fguser}
+read -s -p "Mot de passe [fgpassword123] : " DB_PASS
+echo ""
+DB_PASS=${DB_PASS:-fgpassword123}
+
 # Étape 1 : Mise à jour
-print_info "Étape 1/7 : Mise à jour du système..."
+print_info "Étape 1/6 : Mise à jour du système..."
 sudo apt update && sudo apt upgrade -y
 print_success "Système mis à jour !"
 
 # Étape 2 : Dépendances
-print_info "Étape 2/7 : Installation des dépendances..."
+print_info "Étape 2/6 : Installation des dépendances..."
 sudo apt install -y git cmake build-essential postgresql python3-pip ufw curl
 pip3 install psycopg2-binary --break-system-packages
 print_success "Dépendances installées !"
 
 # Étape 3 : Compilation FGMS
-print_info "Étape 3/7 : Compilation de FGMS..."
+print_info "Étape 3/6 : Compilation de FGMS..."
 if command -v fgms &> /dev/null; then
     print_warning "FGMS déjà installé : $(fgms --version 2>&1 | grep version)"
     read -p "Réinstaller FGMS ? (o/n) : " REINSTALL_FGMS
@@ -79,7 +85,7 @@ else
 fi
 
 # Étape 4 : Configuration PostgreSQL
-print_info "Étape 4/7 : Configuration PostgreSQL..."
+print_info "Étape 4/6 : Configuration PostgreSQL..."
 
 sudo service postgresql start 2>/dev/null || sudo systemctl start postgresql 2>/dev/null || true
 
@@ -95,8 +101,8 @@ else
     echo "listen_addresses = '*'" | sudo tee -a "$PG_CONF"
 fi
 
-if ! sudo grep -q "host    flightgear" "$PG_HBA" 2>/dev/null; then
-    echo "host    flightgear    fguser    0.0.0.0/0    md5" | sudo tee -a "$PG_HBA"
+if ! sudo grep -q "host    $DB_NAME" "$PG_HBA" 2>/dev/null; then
+    echo "host    $DB_NAME    $DB_USER    0.0.0.0/0    md5" | sudo tee -a "$PG_HBA"
 else
     print_warning "Règle pg_hba déjà présente, on passe..."
 fi
@@ -129,15 +135,27 @@ sudo -u postgres psql -d $DB_NAME -c "CREATE TABLE IF NOT EXISTS aircraft_positi
 sudo -u postgres psql -d $DB_NAME -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $DB_USER;"
 sudo -u postgres psql -d $DB_NAME -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $DB_USER;"
 
+# Créer le fichier .env
+print_info "Création du fichier .env..."
+sudo mkdir -p $INSTALL_DIR
+sudo chown $CURRENT_USER:$CURRENT_USER $INSTALL_DIR
+cat > $INSTALL_DIR/.env << ENVEOF
+DB_NAME=$DB_NAME
+DB_USER=$DB_USER
+DB_PASS=$DB_PASS
+DB_HOST=localhost
+ENVEOF
+print_success "Fichier .env créé dans $INSTALL_DIR !"
+
 print_success "PostgreSQL configuré !"
 
-
-# Étape 5: Pare-feu
-print_info "Étape 6/7 : Configuration du pare-feu..."
+# Étape 5 : Pare-feu
+print_info "Étape 5/6 : Configuration du pare-feu..."
 if command -v ufw &> /dev/null; then
     sudo ufw status | grep -q "$FGMS_PORT/udp" || sudo ufw allow $FGMS_PORT/udp
     sudo ufw status | grep -q "$FGMS_TELNET_PORT/tcp" || sudo ufw allow $FGMS_TELNET_PORT/tcp
     sudo ufw status | grep -q "5432/tcp" || sudo ufw allow 5432/tcp
+    sudo ufw status | grep -q "22/tcp" || sudo ufw allow 22/tcp
     sudo ufw --force enable
     print_success "Pare-feu configuré !"
 else
@@ -145,7 +163,7 @@ else
 fi
 
 # Étape 6 : Services systemd
-print_info "Étape 7/7 : Création des services systemd..."
+print_info "Étape 6/6 : Création des services systemd..."
 if command -v systemctl &> /dev/null; then
     sudo tee /etc/systemd/system/fgms.service > /dev/null << EOF
 [Unit]
@@ -171,6 +189,7 @@ After=network.target postgresql.service fgms.service
 [Service]
 Type=simple
 User=$CURRENT_USER
+EnvironmentFile=$INSTALL_DIR/.env
 ExecStart=/usr/bin/python3 $INSTALL_DIR/fgms_tracker.py
 Restart=always
 RestartSec=5
@@ -183,6 +202,7 @@ EOF
     sudo systemctl enable fgms
     sudo systemctl enable fgms-tracker
     sudo systemctl start fgms
+    sleep 3
     sudo systemctl start fgms-tracker
     print_success "Services systemd créés et démarrés !"
 else
@@ -203,7 +223,7 @@ echo "  # Terminal 1 - Lancer FGMS :"
 echo "  fgms -p $FGMS_PORT -a $FGMS_TELNET_PORT -d"
 echo ""
 echo "  # Terminal 2 - Lancer le tracker :"
-echo "  python3 $INSTALL_DIR/fgms_tracker.py"
+echo "  source $INSTALL_DIR/.env && python3 ~/FlightGearTest/fgms_tracker.py"
 echo ""
 print_info "Connexion FlightGear :"
 echo "  Serveur : $(hostname -I | awk '{print $1}') port $FGMS_PORT"
