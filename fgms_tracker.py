@@ -4,7 +4,6 @@ import psycopg2
 import math
 import os
 
-# Charger les variables depuis .env
 DB_NAME = os.getenv("DB_NAME", "flightgear")
 DB_USER = os.getenv("DB_USER", "fguser")
 DB_PASS = os.getenv("DB_PASS", "fgpassword123")
