@@ -183,7 +183,6 @@ EOF
     sudo systemctl enable fgms
     sudo systemctl enable fgms-tracker
     sudo systemctl start fgms
-    sleep 3
     sudo systemctl start fgms-tracker
     print_success "Services systemd créés et démarrés !"
 else
