@@ -2,6 +2,13 @@ import socket
 import time
 import psycopg2
 import math
+import os
+
+# Charger les variables depuis .env
+DB_NAME = os.getenv("DB_NAME", "flightgear")
+DB_USER = os.getenv("DB_USER", "fguser")
+DB_PASS = os.getenv("DB_PASS", "fgpassword123")
+DB_HOST = os.getenv("DB_HOST", "localhost")
 
 def get_positions():
     s = socket.socket()
@@ -20,7 +27,10 @@ def get_positions():
             players.append((callsign, lat, lon, heading))
     return players
 
-conn = psycopg2.connect(dbname="flightgear", user="fguser", password="fgpassword123", host="localhost")
+def connect_db():
+    return psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST)
+
+conn = connect_db()
 print("Tracker démarré !")
 
 while True:
@@ -42,4 +52,4 @@ while True:
         try:
             conn.rollback()
         except:
-            conn = psycopg2.connect(dbname="flightgear", user="fguser", password="fgpassword123", host="localhost")
+            conn = connect_db()
