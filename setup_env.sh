@@ -32,6 +32,3 @@ DB_HOST=localhost
 ENVEOF
 
 print_success "Fichier .env créé dans $INSTALL_DIR/config/.env !"
-echo ""
-print_info "Pour lancer le tracker :"
-echo "  source $INSTALL_DIR/config/.env && python3 $INSTALL_DIR/fgms_tracker.py"
