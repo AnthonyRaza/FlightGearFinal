@@ -16,9 +16,6 @@ print_warning() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 print_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # Config
-DB_NAME="flightgear"
-DB_USER="fguser"
-DB_PASS="fgpassword123"
 INSTALL_DIR="/root/flightgear"
 CURRENT_USER=$(whoami)
 FGMS_PORT=5000
@@ -28,15 +25,22 @@ echo ""
 print_info "=== FlightGear Multiplayer Tracker - Installation ==="
 echo ""
 print_warning "Ce script va :"
-echo "  1. Mettre à jour le système"
-echo "  2. Installer PostgreSQL et les dépendances"
-echo "  3. Compiler et installer FGMS"
-echo "  4. Configurer la base de données"
-echo "  5. Configurer le pare-feu"
-echo "  6. Créer les services systemd"
+echo "  1. Configurer la base de données"
+echo "  2. Mettre à jour le système"
+echo "  3. Installer PostgreSQL et les dépendances"
+echo "  4. Compiler et installer FGMS"
+echo "  5. Configurer la base de données"
+echo "  6. Configurer le pare-feu"
+echo "  7. Créer les services systemd"
 echo ""
 read -p "Continuer ? (o/n) : " CONFIRM
 [[ "$CONFIRM" != "o" ]] && exit 0
+
+# Créer le .env
+bash "$(dirname "$0")/setup_env.sh"
+
+# Charger les variables depuis le .env
+source $INSTALL_DIR/config/.env
 
 # Étape 1 : Mise à jour
 print_info "Étape 1/6 : Mise à jour du système..."
@@ -189,13 +193,7 @@ else
     print_warning "systemd non disponible (WSL2). Lance manuellement :"
 fi
 
-# Lancer la configuration de la base de données
 echo ""
-print_info "Configuration de la base de données..."
-bash "$(dirname "$0")/setup_env.sh"
-echo ""
-
-
 print_success "=== Installation terminée ! ==="
 echo ""
 print_info "Ports ouverts :"
@@ -208,9 +206,8 @@ echo ""
 echo "  # Terminal 1 - Lancer FGMS :"
 echo "  fgms -p $FGMS_PORT -a $FGMS_TELNET_PORT -d"
 echo ""
-echo "  # Terminal 2 - Configurer et lancer le tracker :"
-echo "  bash $INSTALL_DIR/setup_env.sh"
-echo "  source $INSTALL_DIR/config/.env && python3 $INSTALL_DIR/fgms_tracker.py"
+echo "  # Terminal 2 - Lancer le tracker :"
+echo "  source $INSTALL_DIR/config/.env && python3 ~/FlightGearTest/fgms_tracker.py"
 echo ""
 print_info "Connexion FlightGear :"
 echo "  Serveur : $(hostname -I | awk '{print $1}') port $FGMS_PORT"
